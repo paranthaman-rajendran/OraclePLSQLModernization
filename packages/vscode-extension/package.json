@@ -1,0 +1,262 @@
+{
+  "name": "plsql-analyzer",
+  "displayName": "PL/SQL Code Analyzer",
+  "description": "Deep static analysis for Oracle PL/SQL — connected to live databases via MCP",
+  "version": "0.1.0",
+  "publisher": "plsql-analyzer",
+  "private": true,
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Linters", "Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "plsql-analyzer.connect",
+        "title": "PL/SQL: Connect to Oracle Database",
+        "icon": "$(database)"
+      },
+      {
+        "command": "plsql-analyzer.addConnection",
+        "title": "PL/SQL: Add Connection Profile",
+        "icon": "$(add)"
+      },
+      {
+        "command": "plsql-analyzer.removeConnection",
+        "title": "PL/SQL: Remove Connection Profile",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "plsql-analyzer.testConnection",
+        "title": "PL/SQL: Test Connection",
+        "icon": "$(testing-run-icon)"
+      },
+      {
+        "command": "plsql-analyzer.analyzeSchema",
+        "title": "PL/SQL: Analyze Full Schema",
+        "icon": "$(search)"
+      },
+      {
+        "command": "plsql-analyzer.analyzeObject",
+        "title": "PL/SQL: Analyze Current Object",
+        "icon": "$(symbol-method)"
+      },
+      {
+        "command": "plsql-analyzer.showDependencies",
+        "title": "PL/SQL: Show Dependency Graph",
+        "icon": "$(type-hierarchy)"
+      },
+      {
+        "command": "plsql-analyzer.showDashboard",
+        "title": "PL/SQL: Open Schema Dashboard",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "plsql-analyzer.exportReport",
+        "title": "PL/SQL: Export Analysis Report",
+        "icon": "$(export)"
+      },
+      {
+        "command": "plsql-analyzer.refreshSchema",
+        "title": "PL/SQL: Refresh Schema Metadata",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "plsql-analyzer.showObjectDependencies",
+        "title": "PL/SQL: Show Object Dependency Graph",
+        "icon": "$(type-hierarchy-sub)"
+      },
+      {
+        "command": "plsql-analyzer.createTicket",
+        "title": "PL/SQL: Create Issue Tracker Ticket",
+        "icon": "$(add)"
+      },
+      {
+        "command": "plsql-analyzer.configureJira",
+        "title": "PL/SQL: Configure JIRA Credentials",
+        "icon": "$(key)"
+      },
+      {
+        "command": "plsql-analyzer.configureLinear",
+        "title": "PL/SQL: Configure Linear Credentials",
+        "icon": "$(key)"
+      },
+      {
+        "command": "plsql-analyzer.clearBacklog",
+        "title": "PL/SQL: Clear Refactoring Backlog",
+        "icon": "$(clear-all)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "plsql-analyzer.clearBacklog",
+          "when": "view == plsqlRefactoringBacklog",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "plsql-analyzer.createTicket",
+          "when": "view == plsqlRefactoringBacklog && viewItem == backlogFinding",
+          "group": "inline"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "plsql-analyzer.analyzeSchema",
+        "key": "ctrl+shift+a",
+        "mac": "cmd+shift+a"
+      },
+      {
+        "command": "plsql-analyzer.analyzeObject",
+        "key": "ctrl+shift+o",
+        "mac": "cmd+shift+o"
+      },
+      {
+        "command": "plsql-analyzer.showDependencies",
+        "key": "ctrl+shift+d",
+        "mac": "cmd+shift+d"
+      },
+      {
+        "command": "plsql-analyzer.refreshSchema",
+        "key": "ctrl+shift+r",
+        "mac": "cmd+shift+r"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "plsql-analyzer",
+          "title": "PL/SQL Analyzer",
+          "icon": "resources/icon-sidebar.svg"
+        }
+      ]
+    },
+    "views": {
+      "plsql-analyzer": [
+        {
+          "id": "plsqlConnections",
+          "name": "Connections",
+          "icon": "$(database)"
+        },
+        {
+          "id": "plsqlSchemaExplorer",
+          "name": "Schema Explorer",
+          "icon": "$(list-tree)"
+        },
+        {
+          "id": "plsqlRefactoringBacklog",
+          "name": "Refactoring Backlog",
+          "icon": "$(issues)"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "PL/SQL Analyzer",
+      "properties": {
+        "plsqlAnalyzer.logLevel": {
+          "type": "string",
+          "enum": ["debug", "info", "warn", "error"],
+          "default": "info",
+          "description": "Log verbosity for the PL/SQL Analyzer output channel"
+        },
+        "plsqlAnalyzer.analysisOnSave": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically re-analyze the current object when saving a .sql file"
+        },
+        "plsqlAnalyzer.maxComplexityWarning": {
+          "type": "number",
+          "default": 10,
+          "description": "Cyclomatic complexity threshold for WARNING diagnostics"
+        },
+        "plsqlAnalyzer.maxComplexityError": {
+          "type": "number",
+          "default": 20,
+          "description": "Cyclomatic complexity threshold for ERROR diagnostics"
+        },
+        "plsqlAnalyzer.maxNestingDepth": {
+          "type": "number",
+          "default": 4,
+          "description": "Maximum allowed block nesting depth"
+        },
+        "plsqlAnalyzer.maxParameterCount": {
+          "type": "number",
+          "default": 7,
+          "description": "Maximum allowed parameter count per procedure/function"
+        },
+        "plsqlAnalyzer.maxRoutineLines": {
+          "type": "number",
+          "default": 200,
+          "description": "Maximum executable lines per procedure/function before flagging as too long"
+        },
+        "plsqlAnalyzer.oracle.walletPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to Oracle Wallet directory (alternative to password-based auth). Value is passed as ORACLE_WALLET_DIR to the MCP server."
+        },
+        "plsqlAnalyzer.vault.secretPath": {
+          "type": "string",
+          "default": "",
+          "description": "HashiCorp Vault secret path for Oracle credentials (e.g. secret/data/oracle/dev)"
+        },
+        "plsqlAnalyzer.jira.baseUrl": {
+          "type": "string",
+          "default": "",
+          "description": "JIRA Cloud base URL (e.g. https://mycompany.atlassian.net). Credentials are stored in Secret Storage via 'PL/SQL: Configure JIRA Credentials'."
+        },
+        "plsqlAnalyzer.jira.projectKey": {
+          "type": "string",
+          "default": "PLSQL",
+          "description": "JIRA project key for new issues created from findings (e.g. PLSQL)"
+        },
+        "plsqlAnalyzer.jira.issueType": {
+          "type": "string",
+          "default": "Task",
+          "description": "JIRA issue type for new issues (e.g. 'Task', 'Technical Debt', 'Bug')"
+        },
+        "plsqlAnalyzer.linear.teamId": {
+          "type": "string",
+          "default": "",
+          "description": "Linear team UUID. Set to enable Linear ticket creation from findings."
+        },
+        "plsqlAnalyzer.linear.labelId": {
+          "type": "string",
+          "default": "",
+          "description": "Linear label UUID to attach to all created issues (optional)"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "build:watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "test": "node out/test/runTests.js",
+    "package": "vsce package --no-dependencies"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@plsql-analyzer/shared": "*",
+    "@plsql-analyzer/analysis": "*",
+    "better-sqlite3": "^9.4.0",
+    "uuid": "^9.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.0",
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/test-electron": "^2.3.0",
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/uuid": "^9.0.0",
+    "@vscode/vsce": "^2.24.0",
+    "esbuild": "^0.21.0",
+    "mocha": "^10.4.0",
+    "typescript": "^5.4.0"
+  }
+}

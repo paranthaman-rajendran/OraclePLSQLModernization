@@ -1,0 +1,32 @@
+{
+  "name": "@plsql-analyzer/mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Oracle Database MCP Server for PL/SQL Analyzer",
+  "type": "module",
+  "main": "./dist/index.js",
+  "bin": {
+    "plsql-mcp-server": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "test": "mocha --require tsx/cjs 'test/**/*.test.ts'",
+    "dev": "node --inspect-brk dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@plsql-analyzer/shared": "*",
+    "dotenv": "^16.4.0",
+    "node-oracledb": "^6.4.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.0",
+    "@types/node": "^20.0.0",
+    "esbuild": "^0.21.0",
+    "mocha": "^10.4.0",
+    "tsx": "^4.11.0",
+    "typescript": "^5.4.0"
+  }
+}

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none';
+                 script-src ${cspSource} 'unsafe-inline';
+                 style-src ${cspSource} 'unsafe-inline';
+                 img-src ${cspSource} data:;">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PL/SQL Dependency Graph</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--vscode-font-family, sans-serif);
+      font-size: var(--vscode-font-size, 13px);
+      background: var(--vscode-editor-background, #1e1e1e);
+      color: var(--vscode-editor-foreground, #d4d4d4);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Toolbar ── */
+    #toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      background: var(--vscode-sideBar-background, #252526);
+      border-bottom: 1px solid var(--vscode-panel-border, #3c3c3c);
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+    #toolbar label { font-size: 11px; color: var(--vscode-descriptionForeground, #888); }
+    #toolbar select, #toolbar input[type=text] {
+      background: var(--vscode-input-background, #3c3c3c);
+      border: 1px solid var(--vscode-input-border, #555);
+      color: var(--vscode-input-foreground, #ccc);
+      padding: 2px 6px;
+      border-radius: 2px;
+      font-size: 11px;
+    }
+    #toolbar button {
+      background: var(--vscode-button-background, #0e639c);
+      color: var(--vscode-button-foreground, #fff);
+      border: none;
+      padding: 3px 10px;
+      border-radius: 2px;
+      cursor: pointer;
+      font-size: 11px;
+    }
+    #toolbar button:hover { background: var(--vscode-button-hoverBackground, #1177bb); }
+    #toolbar button.secondary {
+      background: var(--vscode-button-secondaryBackground, #3a3d41);
+      color: var(--vscode-button-secondaryForeground, #ccc);
+    }
+    #node-count { font-size: 11px; color: var(--vscode-descriptionForeground); margin-left: auto; }
+
+    /* ── Graph ── */
+    #cy {
+      flex: 1;
+      width: 100%;
+    }
+
+    /* ── Tooltip ── */
+    #tooltip {
+      position: fixed;
+      background: var(--vscode-editorHoverWidget-background, #252526);
+      border: 1px solid var(--vscode-editorHoverWidget-border, #454545);
+      color: var(--vscode-editorHoverWidget-foreground, #d4d4d4);
+      padding: 8px 10px;
+      border-radius: 3px;
+      font-size: 12px;
+      max-width: 280px;
+      pointer-events: none;
+      display: none;
+      z-index: 100;
+      line-height: 1.5;
+    }
+    #tooltip strong { color: var(--vscode-symbolIcon-functionForeground, #dcdcaa); }
+  </style>
+</head>
+<body>
+
+<div id="toolbar">
+  <label>Filter:</label>
+  <select id="type-filter">
+    <option value="">All Types</option>
+    <option value="PACKAGE">Packages</option>
+    <option value="PROCEDURE">Procedures</option>
+    <option value="FUNCTION">Functions</option>
+    <option value="TRIGGER">Triggers</option>
+    <option value="VIEW">Views</option>
+  </select>
+
+  <label>Search:</label>
+  <input type="text" id="search-input" placeholder="object name…" style="width:140px">
+
+  <button id="btn-fit">⊡ Fit</button>
+  <button id="btn-layout" class="secondary">↺ Layout</button>
+  <button id="btn-export" class="secondary">⬇ Export SVG</button>
+
+  <span id="node-count"></span>
+</div>
+
+<div id="cy"></div>
+<div id="tooltip"></div>
+
+<script src="${cytoscapeUri}"></script>
+<script>
+  const vscode = acquireVsCodeApi();
+
+  let cy;
+  let allElements = [];
+
+  // ── Colour palette by object type ───────────────────────────────────────
+  const TYPE_COLOR = {
+    'PACKAGE':      '#4ec9b0',
+    'PACKAGE BODY': '#4ec9b0',
+    'PROCEDURE':    '#dcdcaa',
+    'FUNCTION':     '#c586c0',
+    'TRIGGER':      '#f48771',
+    'TYPE':         '#9cdcfe',
+    'VIEW':         '#ce9178',
+    'DEFAULT':      '#888888',
+  };
+
+  function colorFor(type) {
+    return TYPE_COLOR[type] || TYPE_COLOR['DEFAULT'];
+  }
+
+  // ── Initialise Cytoscape ─────────────────────────────────────────────────
+  function initCy(elements) {
+    allElements = elements;
+
+    cy = cytoscape({
+      container: document.getElementById('cy'),
+      elements,
+      style: [
+        {
+          selector: 'node',
+          style: {
+            'label': 'data(label)',
+            'background-color': 'data(color)',
+            'color': '#ffffff',
+            'text-valign': 'bottom',
+            'text-halign': 'center',
+            'font-size': '10px',
+            'text-outline-width': 2,
+            'text-outline-color': '#1e1e1e',
+            'width': 'mapData(cc, 1, 30, 20, 60)',
+            'height': 'mapData(cc, 1, 30, 20, 60)',
+            'border-width': 2,
+            'border-color': '#444',
+          },
+        },
+        {
+          selector: 'node:selected',
+          style: {
+            'border-color': '#ffffff',
+            'border-width': 3,
+          },
+        },
+        {
+          selector: 'node.invalid',
+          style: { 'border-color': '#f48771', 'border-width': 3 },
+        },
+        {
+          selector: 'edge',
+          style: {
+            'width': 1.5,
+            'line-color': '#555',
+            'target-arrow-color': '#555',
+            'target-arrow-shape': 'triangle',
+            'curve-style': 'bezier',
+            'opacity': 0.7,
+          },
+        },
+        {
+          selector: 'edge.circular',
+          style: { 'line-color': '#f48771', 'target-arrow-color': '#f48771', 'width': 2.5 },
+        },
+        {
+          selector: '.faded',
+          style: { 'opacity': 0.15 },
+        },
+      ],
+      layout: { name: 'cose', animate: false, nodeRepulsion: 8000, idealEdgeLength: 80 },
+      wheelSensitivity: 0.3,
+    });
+
+    updateNodeCount();
+    bindEvents();
+  }
+
+  // ── Events ───────────────────────────────────────────────────────────────
+  function bindEvents() {
+    // Hover tooltip
+    const tooltip = document.getElementById('tooltip');
+    cy.on('mouseover', 'node', (e) => {
+      const d = e.target.data();
+      tooltip.innerHTML = `<strong>${d.id}</strong><br>
+        Type: ${d.type}<br>
+        Complexity: ${d.cc}<br>
+        Lines: ${d.loc}<br>
+        Callers: ${d.fanIn} &nbsp; Callees: ${d.fanOut}<br>
+        Findings: ${d.findings}`;
+      tooltip.style.display = 'block';
+    });
+    cy.on('mouseout', 'node', () => { tooltip.style.display = 'none'; });
+    cy.on('mousemove', (e) => {
+      tooltip.style.left = (e.originalEvent.clientX + 12) + 'px';
+      tooltip.style.top  = (e.originalEvent.clientY + 12) + 'px';
+    });
+
+    // Click to select and highlight neighbourhood
+    cy.on('tap', 'node', (e) => {
+      const node = e.target;
+      cy.elements().addClass('faded');
+      const neighbourhood = node.closedNeighborhood();
+      neighbourhood.removeClass('faded');
+      // Notify extension
+      vscode.postMessage({ type: 'nodeSelected', objectId: node.data('objectId') });
+    });
+
+    cy.on('tap', (e) => {
+      if (e.target === cy) {
+        cy.elements().removeClass('faded');
+      }
+    });
+
+    // Double-click → navigate to object
+    cy.on('dblclick', 'node', (e) => {
+      vscode.postMessage({ type: 'navigateTo', objectId: e.target.data('objectId') });
+    });
+  }
+
+  // ── Filter & search ──────────────────────────────────────────────────────
+  document.getElementById('type-filter').addEventListener('change', applyFilters);
+  document.getElementById('search-input').addEventListener('input', applyFilters);
+
+  function applyFilters() {
+    const typeVal = document.getElementById('type-filter').value;
+    const searchVal = document.getElementById('search-input').value.toLowerCase();
+
+    cy.elements().show();
+    if (typeVal) {
+      cy.nodes().forEach(n => {
+        if (n.data('type') !== typeVal) n.hide();
+      });
+    }
+    if (searchVal) {
+      cy.nodes().forEach(n => {
+        if (!n.data('label').toLowerCase().includes(searchVal)) n.hide();
+      });
+    }
+    // Hide edges whose endpoints are hidden
+    cy.edges().forEach(e => {
+      if (e.source().hidden() || e.target().hidden()) e.hide();
+    });
+    updateNodeCount();
+  }
+
+  function updateNodeCount() {
+    const visible = cy ? cy.nodes(':visible').length : 0;
+    const total   = cy ? cy.nodes().length : 0;
+    document.getElementById('node-count').textContent =
+      visible === total ? `${total} objects` : `${visible} / ${total} objects`;
+  }
+
+  // ── Toolbar buttons ──────────────────────────────────────────────────────
+  document.getElementById('btn-fit').addEventListener('click', () => cy.fit(undefined, 30));
+  document.getElementById('btn-layout').addEventListener('click', () => {
+    cy.layout({ name: 'cose', animate: true, nodeRepulsion: 8000, idealEdgeLength: 80 }).run();
+  });
+  document.getElementById('btn-export').addEventListener('click', () => {
+    const svg = cy.svg({ scale: 2, full: true });
+    vscode.postMessage({ type: 'exportSvg', svg });
+  });
+
+  // ── Message bus ─────────────────────────────────────────────────────────
+  window.addEventListener('message', (event) => {
+    const msg = event.data;
+    if (msg.type === 'loadGraph') {
+      if (cy) cy.destroy();
+      initCy(msg.elements);
+    }
+    if (msg.type === 'focusNode') {
+      if (!cy) return;
+      const node = cy.getElementById(msg.objectId);
+      if (node.length) {
+        cy.animate({ fit: { eles: node.closedNeighborhood(), padding: 60 }, duration: 400 });
+        node.select();
+      }
+    }
+  });
+</script>
+</body>
+</html>

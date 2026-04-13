@@ -1,0 +1,33 @@
+{
+  "name": "@plsql-analyzer/cli",
+  "version": "0.1.0",
+  "private": true,
+  "description": "plsql-analyze CLI — Oracle PL/SQL static analysis for CI/CD pipelines",
+  "type": "module",
+  "main": "./dist/index.js",
+  "bin": {
+    "plsql-analyze": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "build:watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "dev": "node --inspect-brk dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@plsql-analyzer/shared": "*",
+    "@plsql-analyzer/analysis": "*",
+    "commander": "^12.0.0",
+    "chalk": "^5.3.0",
+    "dotenv": "^16.4.0",
+    "uuid": "^9.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/uuid": "^9.0.0",
+    "esbuild": "^0.21.0",
+    "typescript": "^5.4.0"
+  }
+}
