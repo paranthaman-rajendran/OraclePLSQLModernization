@@ -1,0 +1,29 @@
+node_modules/
+dist/
+out/
+*.vsix
+
+# Credentials — never commit these
+.env
+*.p12
+*.sso
+wallet/
+tnsnames.ora
+sqlnet.ora
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Test output
+coverage/
+*.lcov
+
+# SQLite snapshots
+*.db
+*.db-shm
+*.db-wal
