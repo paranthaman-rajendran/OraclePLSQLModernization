@@ -1,0 +1,33 @@
+{
+  "name": "plsql-analyzer-root",
+  "private": true,
+  "version": "0.1.0",
+  "description": "PL/SQL Code Analyzer — VS Code Extension monorepo",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "workspaces": [
+    "shared",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build:shared && npm run build:analysis && npm run build:server && npm run build:extension && npm run build:cli",
+    "build:shared": "npm run build -w shared",
+    "build:analysis": "npm run build -w packages/analysis",
+    "build:server": "npm run build -w packages/mcp-server",
+    "build:extension": "npm run build -w packages/vscode-extension",
+    "build:cli": "npm run build -w packages/cli",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "eslint 'shared/src/**/*.ts' 'packages/*/src/**/*.ts'",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "clean": "rimraf shared/dist packages/*/dist"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "rimraf": "^5.0.0",
+    "typescript": "^5.4.0"
+  }
+}
